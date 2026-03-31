@@ -244,8 +244,47 @@
             font-size: 13px;
         }
         .recent-entry:last-child { border-bottom: none; }
-        .recent-entry .re-left { color: var(--mid); }
+        .recent-entry .re-left { color: var(--mid); flex: 1; }
         .recent-entry .re-right { font-weight: 700; color: var(--accent); }
+        .recent-entry .re-del {
+            width: 24px; height: 24px; border: none; background: rgba(217,79,79,0.1);
+            color: #d94f4f; border-radius: 6px; font-size: 12px; cursor: pointer;
+            margin-left: 8px; display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s; flex-shrink: 0;
+        }
+        .recent-entry .re-del:active { transform: scale(0.9); background: rgba(217,79,79,0.2); }
+        /* Confirm overlay */
+        .confirm-overlay {
+            position: fixed; inset: 0; background: rgba(26,58,42,0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 90; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+            padding: 20px;
+        }
+        .confirm-overlay.show { opacity: 1; pointer-events: auto; }
+        .confirm-card {
+            background: #fff; border-radius: 24px; padding: 24px; width: 100%;
+            max-width: 360px; box-shadow: 0 20px 60px rgba(26,58,42,0.2);
+            transform: scale(0.9); transition: transform 0.2s;
+        }
+        .confirm-overlay.show .confirm-card { transform: scale(1); }
+        .confirm-card h3 { font-size: 18px; font-weight: 800; margin-bottom: 16px; text-align: center; }
+        .confirm-detail { font-size: 14px; color: var(--mid); line-height: 1.8; margin-bottom: 20px; }
+        .confirm-detail .cd-row { display: flex; justify-content: space-between; padding: 4px 0; }
+        .confirm-detail .cd-label { color: var(--light); }
+        .confirm-detail .cd-val { font-weight: 700; color: var(--dark); }
+        .confirm-detail .cd-divider { border-top: 1px dashed var(--mint); margin: 8px 0; }
+        .confirm-detail .cd-total { font-size: 18px; font-weight: 800; color: var(--accent); }
+        .confirm-btns { display: flex; gap: 10px; }
+        .confirm-btns button {
+            flex: 1; padding: 14px; border: none; border-radius: var(--r);
+            font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+        }
+        .confirm-btns .btn-cancel { background: var(--mint); color: var(--mid); }
+        .confirm-btns .btn-confirm {
+            background: var(--primary); color: var(--dark);
+            box-shadow: 0 4px 12px rgba(255,200,1,0.35);
+        }
+        .confirm-btns button:active { transform: scale(0.96); }
         .tip-box {
             padding: 14px 16px; background: rgba(255,200,1,0.12); border-radius: var(--r);
             margin-bottom: 16px; border: 1px solid rgba(255,200,1,0.25);
@@ -410,8 +449,20 @@
 
     <div class="overlay" id="success-overlay">
         <div class="icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
-        <p class="msg">已送出！</p>
+        <p class="msg">已存入帳本！</p>
         <p class="sub">Ruby 會發到群組確認 ✨</p>
+    </div>
+
+    <!-- 確認預覽 -->
+    <div class="confirm-overlay" id="confirm-overlay">
+        <div class="confirm-card">
+            <h3>📋 確認記帳內容</h3>
+            <div class="confirm-detail" id="confirm-detail"></div>
+            <div class="confirm-btns">
+                <button class="btn-cancel" onclick="closeConfirm()">返回修改</button>
+                <button class="btn-confirm" onclick="confirmSave()">確認送出</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -503,7 +554,9 @@
             document.getElementById('save-btn').disabled = !payerId || checked.size===0;
         }
 
-        // 存入
+        // 存入 — 先預覽確認
+        let pendingData = null;
+
         document.getElementById('save-btn').addEventListener('click', () => {
             if (!payerId || checked.size===0) return;
             const payer = MEMBERS.find(m=>m.id===payerId);
@@ -516,19 +569,56 @@
             });
             if (total===0) { showAlert('請至少填一個金額！'); return; }
 
-            const data = {
+            const mealLabels = { lunch:'午餐', afternoon:'下午茶', dinner:'晚餐', other:'其他' };
+            pendingData = {
                 action:'DAILY_RECORD', date:document.getElementById('record-date').value,
                 meal, payer:{ id:payer.id, name:payer.name, fullName:payer.full },
                 entries, total, timestamp:new Date().toISOString()
             };
 
-            if (tg) { tg.sendData(JSON.stringify(data)); }
-            else {
-                console.log('📤',JSON.stringify(data,null,2));
-                addToLedger(data);
-                showSuccess();
-            }
+            // 顯示確認預覽
+            let detailHtml =
+                `<div class="cd-row"><span class="cd-label">日期</span><span class="cd-val">${pendingData.date}</span></div>` +
+                `<div class="cd-row"><span class="cd-label">餐次</span><span class="cd-val">${mealLabels[pendingData.meal]||pendingData.meal}</span></div>` +
+                `<div class="cd-row"><span class="cd-label">墊款人</span><span class="cd-val">${payer.name}</span></div>` +
+                `<div class="cd-divider"></div>`;
+            entries.forEach(e => {
+                detailHtml += `<div class="cd-row"><span class="cd-label">${e.name}</span><span class="cd-val">$${e.amount}</span></div>`;
+            });
+            detailHtml += `<div class="cd-divider"></div>`;
+            detailHtml += `<div class="cd-row"><span class="cd-label">合計</span><span class="cd-val cd-total">$${total.toLocaleString()}</span></div>`;
+
+            document.getElementById('confirm-detail').innerHTML = detailHtml;
+            document.getElementById('confirm-overlay').classList.add('show');
         });
+
+        function closeConfirm() {
+            document.getElementById('confirm-overlay').classList.remove('show');
+            pendingData = null;
+        }
+
+        function confirmSave() {
+            if (!pendingData) return;
+            document.getElementById('confirm-overlay').classList.remove('show');
+
+            // 更新累積帳本
+            addToLedger(pendingData);
+
+            // 顯示成功動畫
+            showSuccess();
+
+            // 延遲送出（讓動畫先播）
+            const dataStr = JSON.stringify(pendingData);
+            pendingData = null;
+
+            if (tg && tg.sendData) {
+                setTimeout(() => {
+                    try { tg.sendData(dataStr); } catch(e) { console.log('sendData error:', e); }
+                }, 800);
+            } else {
+                console.log('📤', dataStr);
+            }
+        }
 
         // ── 累積帳本邏輯 ──
         const ledgerLog = [];
@@ -549,14 +639,45 @@
             // 加入紀錄
             const mealLabels = { lunch:'午餐', afternoon:'下午茶', dinner:'晚餐', other:'其他' };
             ledgerLog.unshift({
+                id: Date.now(),
                 date: record.date,
                 meal: mealLabels[record.meal] || record.meal,
                 payer: record.payer.name,
+                payerId: record.payer.id,
                 total: record.total,
-                count: record.entries.length
+                count: record.entries.length,
+                entries: record.entries
             });
 
             renderLedger();
+            resetForm();
+        }
+
+        function deleteLedgerEntry(logId) {
+            const idx = ledgerLog.findIndex(r => r.id === logId);
+            if (idx === -1) return;
+            if (!confirm(`確定要刪除這筆紀錄嗎？\n${ledgerLog[idx].date} ${ledgerLog[idx].meal} $${ledgerLog[idx].total}`)) return;
+
+            const entry = ledgerLog[idx];
+            // 從 balance 扣除
+            if (ledgerBalance[entry.payerId]) ledgerBalance[entry.payerId].paid -= entry.total;
+            entry.entries.forEach(e => {
+                if (ledgerBalance[e.id]) ledgerBalance[e.id].consumed -= e.amount;
+            });
+            ledgerLog.splice(idx, 1);
+            renderLedger();
+        }
+
+        function resetForm() {
+            // 清空勾選和金額
+            checked.forEach(id => {
+                document.getElementById(`c-${id}`).classList.remove('active');
+                document.getElementById(`i-${id}`).value = '';
+            });
+            checked.clear();
+            document.getElementById('footer-count').innerText = '0 人';
+            document.getElementById('total-display').innerText = '$0';
+            updateSave();
         }
 
         function renderLedger() {
@@ -607,6 +728,7 @@
                     `<div class="recent-entry">
                         <span class="re-left">${r.date} ${r.meal}・${r.payer} 墊・${r.count}人</span>
                         <span class="re-right">$${r.total.toLocaleString()}</span>
+                        <button class="re-del" onclick="deleteLedgerEntry(${r.id})" title="刪除">✕</button>
                     </div>`
                 ).join('') + (ledgerLog.length > 5 ? `<div style="text-align:center;padding:6px;font-size:11px;color:var(--light);">...共 ${ledgerLog.length} 筆</div>` : '');
             }
@@ -716,7 +838,7 @@
         function showSuccess() {
             const o = document.getElementById('success-overlay');
             o.classList.add('show');
-            setTimeout(()=>{ o.classList.remove('show'); if(tg) tg.close(); }, 1500);
+            setTimeout(()=>{ o.classList.remove('show'); }, 1800);
         }
     </script>
 </body>
