@@ -604,19 +604,15 @@
             // 更新累積帳本
             addToLedger(pendingData);
 
-            // 顯示成功動畫
-            showSuccess();
-
-            // 延遲送出（讓動畫先播）
             const dataStr = JSON.stringify(pendingData);
             pendingData = null;
 
             if (tg && tg.sendData) {
-                setTimeout(() => {
-                    try { tg.sendData(dataStr); } catch(e) { console.log('sendData error:', e); }
-                }, 800);
+                // sendData 會立刻關閉 MiniApp，所以不播動畫
+                try { tg.sendData(dataStr); } catch(e) { console.log('sendData error:', e); }
             } else {
                 console.log('📤', dataStr);
+                showSuccess();
             }
         }
 
@@ -735,31 +731,87 @@
         }
 
         function handleSettle() {
+            if (ledgerLog.length === 0) {
+                showAlert('帳本是空的，沒有可結算的資料！');
+                return;
+            }
+
             // 第一步：預覽提示
+            const totalAmt = ledgerLog.reduce((s,r) => s + r.total, 0);
             const step1 = confirm(
                 '⚠️ 結算前確認\n\n'
+                + `共 ${ledgerLog.length} 筆，總金額 $${totalAmt.toLocaleString()}\n\n`
                 + '結算後：\n'
                 + '• Ruby 會計算每人淨額\n'
                 + '• 算出最省事的還錢方案\n'
                 + '• 發送到群組讓大家確認\n'
                 + '• 帳本歸零重新開始\n'
-                + '• 歷史紀錄保留兩個月\n\n'
+                + '• 歷史紀錄保留在「歷史帳本」\n\n'
                 + '確定要繼續嗎？'
             );
             if (!step1) return;
 
-            // 第二步：再次確認
             const step2 = confirm('再確認一次：真的要結算了嗎？結算後無法復原。');
             if (!step2) return;
 
+            // 計算每人淨額
+            const settleDate = new Date().toISOString().split('T')[0];
+            const netResults = [];
+            MEMBERS.forEach(m => {
+                const b = ledgerBalance[m.id];
+                if (!b || (b.paid === 0 && b.consumed === 0)) return;
+                const net = b.paid - b.consumed;
+                netResults.push({ name: m.name, paid: b.paid, consumed: b.consumed, net });
+            });
+
+            // 生成還款明細文字
+            let detailLines = `結算日：${settleDate}\n共 ${ledgerLog.length} 筆・總額 $${totalAmt.toLocaleString()}\n\n`;
+            netResults.forEach(r => {
+                const sign = r.net > 0 ? '+' : '';
+                detailLines += `${r.name}：已墊 $${r.paid} / 已吃 $${r.consumed} → 淨額 ${sign}$${r.net}\n`;
+            });
+
+            // 把每筆記帳搬到歷史帳本
+            ledgerLog.forEach(r => {
+                archiveData.unshift({
+                    date: r.date,
+                    type: r.meal === '午餐' ? 'lunch' : r.meal === '下午茶' ? 'afternoon' : r.meal === '晚餐' ? 'dinner' : 'other',
+                    summary: `${r.payer} 墊・${r.count}人`,
+                    total: r.total,
+                    names: r.entries ? r.entries.map(e => e.name) : [],
+                    detail: r.entries ? r.entries.map(e => `${e.name} $${e.amount}`).join('、') : `${r.payer} 墊 $${r.total}`
+                });
+            });
+
+            // 加入結算摘要紀錄
+            archiveData.unshift({
+                date: settleDate,
+                type: 'settle',
+                summary: `結算 ${ledgerLog.length} 筆`,
+                total: totalAmt,
+                names: netResults.map(r => r.name),
+                detail: detailLines.replace(/\n/g, '<br>')
+            });
+
+            // 歸零帳本
+            ledgerLog.length = 0;
+            Object.keys(ledgerBalance).forEach(k => delete ledgerBalance[k]);
+            renderLedger();
+            renderArchive();
+
+            // 送出結算指令給 Bot
             const data = {
                 action: 'SETTLE',
                 timestamp: new Date().toISOString(),
-                retainMonths: 2  // 告知 bot 保留兩個月歷史
+                retainMonths: 2
             };
 
-            if (tg) { tg.sendData(JSON.stringify(data)); }
-            else { console.log('📤 結算', data); showSuccess(); }
+            if (tg && tg.sendData) {
+                try { tg.sendData(JSON.stringify(data)); } catch(e) { console.log('sendData error:', e); }
+            } else {
+                console.log('📤 結算', data);
+                showSuccess();
+            }
         }
 
         function switchTab(tab) {
