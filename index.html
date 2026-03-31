@@ -7,9 +7,9 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg: #F1F6F4; --primary: #FFC801; --accent: #FF9932;
-            --mint: #D9E8E2; --dark: #1a3a2a; --mid: #3d6b56;
-            --light: #6a9b84; --r: 16px; --rs: 12px;
+            --bg: #FAF3E1; --primary: #FF6D1F; --accent: #FF6D1F;
+            --mint: #F5E7C6; --dark: #222222; --mid: #555555;
+            --light: #888888; --r: 16px; --rs: 12px;
         }
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
@@ -19,25 +19,25 @@
         }
         .top-nav {
             position: sticky; top: 0; z-index: 50;
-            background: rgba(241,246,244,0.92); backdrop-filter: blur(12px);
+            background: rgba(250,243,225,0.92); backdrop-filter: blur(12px);
             padding: 12px 16px; display: flex; justify-content: center; gap: 24px;
-            border-bottom: 1px solid rgba(217,232,226,0.6);
+            border-bottom: 1px solid rgba(245,231,198,0.6);
         }
         .nav-btn {
             display: flex; flex-direction: column; align-items: center; gap: 4px;
-            background: none; border: none; cursor: pointer; color: #9bb;
+            background: none; border: none; cursor: pointer; color: #9ca3af;
         }
         .nav-btn .nav-icon {
             width: 44px; height: 44px; border-radius: var(--rs); background: #fff;
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 2px 6px rgba(26,58,42,0.06); transition: all 0.2s;
+            box-shadow: 0 2px 6px rgba(34,34,34,0.06); transition: all 0.2s;
         }
         .nav-btn .nav-icon svg { width: 20px; height: 20px; }
         .nav-btn span { font-size: 11px; font-weight: 700; }
         .nav-btn.active { color: var(--dark); }
         .nav-btn.active .nav-icon {
             background: var(--primary); color: var(--dark);
-            box-shadow: 0 4px 12px rgba(255,200,1,0.35);
+            box-shadow: 0 4px 12px rgba(255,109,31,0.35);
         }
         .page { padding: 16px; }
         .page.hidden { display: none; }
@@ -49,7 +49,7 @@
         .date-row {
             display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
             padding: 10px 14px; background: #fff; border-radius: var(--rs);
-            box-shadow: 0 1px 4px rgba(26,58,42,0.05);
+            box-shadow: 0 1px 4px rgba(34,34,34,0.05);
         }
         .date-row input[type="date"] {
             flex: 1; border: none; background: transparent; font-size: 15px;
@@ -63,7 +63,7 @@
         }
         .meal-tag.active {
             background: var(--primary); color: var(--dark); border-color: var(--primary);
-            box-shadow: 0 2px 8px rgba(255,200,1,0.3);
+            box-shadow: 0 2px 8px rgba(255,109,31,0.3);
         }
         .payer-grid {
             display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 22px;
@@ -76,7 +76,7 @@
         .payer-btn:active { transform: scale(0.95); }
         .payer-btn.selected {
             background: var(--primary); color: var(--dark); border-color: var(--primary);
-            box-shadow: 0 4px 12px rgba(255,200,1,0.35); transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(255,109,31,0.35); transform: scale(1.02);
         }
         .member-list { display: flex; flex-direction: column; gap: 8px; }
         .member-card {
@@ -85,14 +85,14 @@
             border-radius: var(--r); cursor: pointer; transition: all 0.2s;
         }
         .member-card:active { transform: scale(0.99); }
-        .member-card.active { border-color: var(--accent); box-shadow: 0 4px 14px rgba(255,153,50,0.12); }
+        .member-card.active { border-color: var(--accent); box-shadow: 0 4px 14px rgba(255,109,31,0.12); }
         .m-left { display: flex; align-items: center; gap: 10px; }
         .m-check {
             width: 22px; height: 22px; border: 2px solid var(--mint); border-radius: 7px;
-            background: #f8fbf9; display: flex; align-items: center; justify-content: center;
+            background: #ffffff; display: flex; align-items: center; justify-content: center;
             flex-shrink: 0; transition: all 0.2s;
         }
-        .member-card.active .m-check { border-color: var(--accent); background: #fff6ec; }
+        .member-card.active .m-check { border-color: var(--accent); background: #FFF0E5; }
         .m-dot {
             width: 8px; height: 8px; background: var(--accent); border-radius: 50%;
             opacity: 0; transform: scale(0); transition: all 0.2s;
@@ -109,17 +109,17 @@
         .m-right span { font-size: 12px; color: var(--light); font-weight: 600; }
         .amt-input {
             width: 68px; padding: 7px 6px; border: 1.5px solid var(--mint); border-radius: 8px;
-            font-size: 16px; font-weight: 700; text-align: right; background: #f8fbf9;
+            font-size: 16px; font-weight: 700; text-align: right; background: #ffffff;
             color: var(--dark); outline: none; font-family: inherit;
             -webkit-appearance: none; appearance: none; -moz-appearance: textfield;
         }
         .amt-input:focus { border-color: var(--primary); background: #fff; }
-        .amt-input::placeholder { color: #b0c4b8; font-weight: 400; }
+        .amt-input::placeholder { color: #d1d5db; font-weight: 400; }
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
         .total-bar {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 14px 18px; background: linear-gradient(135deg, var(--dark), #2d5a42);
+            padding: 14px 18px; background: linear-gradient(135deg, var(--dark), #444444);
             border-radius: var(--r); margin-top: 12px; color: #fff;
         }
         .total-bar .label { font-size: 13px; opacity: 0.7; }
@@ -129,7 +129,7 @@
             padding-bottom: max(12px, env(safe-area-inset-bottom));
             background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
             border-top: 1px solid var(--mint);
-            box-shadow: 0 -4px 20px rgba(26,58,42,0.06);
+            box-shadow: 0 -4px 20px rgba(34,34,34,0.06);
             display: flex; align-items: center; justify-content: space-between; z-index: 40;
         }
         .f-col { display: flex; flex-direction: column; gap: 2px; }
@@ -139,7 +139,7 @@
         .save-btn {
             padding: 12px 24px; background: var(--primary); color: var(--dark); border: none;
             border-radius: var(--r); font-size: 15px; font-weight: 700; cursor: pointer;
-            transition: all 0.15s; box-shadow: 0 4px 12px rgba(255,200,1,0.35);
+            transition: all 0.15s; box-shadow: 0 4px 12px rgba(255,109,31,0.35);
         }
         .save-btn:active { transform: scale(0.96); }
         .save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -149,7 +149,7 @@
         .h-header p { font-size: 12px; color: var(--light); margin-top: 4px; }
         .h-card {
             background: #fff; border-radius: 24px; padding: 20px;
-            box-shadow: 0 2px 12px rgba(26,58,42,0.05); margin-bottom: 16px;
+            box-shadow: 0 2px 12px rgba(34,34,34,0.05); margin-bottom: 16px;
         }
         .h-card .empty { text-align: center; color: var(--light); padding: 20px; font-size: 14px; }
         /* History tab */
@@ -164,7 +164,7 @@
             flex: 1; border: none; background: transparent; font-size: 14px;
             color: var(--dark); outline: none; font-family: inherit;
         }
-        .search-bar input::placeholder { color: #b0c4b8; }
+        .search-bar input::placeholder { color: #d1d5db; }
         .month-group { margin-bottom: 20px; }
         .month-label {
             font-size: 12px; font-weight: 700; color: var(--light);
@@ -173,7 +173,7 @@
         }
         .history-record {
             background: #fff; border-radius: var(--r); padding: 14px 16px;
-            margin-bottom: 8px; box-shadow: 0 1px 4px rgba(26,58,42,0.04);
+            margin-bottom: 8px; box-shadow: 0 1px 4px rgba(34,34,34,0.04);
             border-left: 3px solid var(--primary); cursor: pointer; transition: all 0.2s;
         }
         .history-record:active { transform: scale(0.99); }
@@ -209,7 +209,7 @@
         /* Settlement table rows */
         .settle-row {
             display: flex; align-items: center; padding: 10px 0;
-            border-bottom: 1px solid rgba(217,232,226,0.4);
+            border-bottom: 1px solid rgba(245,231,198,0.4);
         }
         .settle-row:last-child { border-bottom: none; }
         .settle-row .sr-name {
@@ -231,7 +231,7 @@
         .settle-row .sr-net.zero { color: var(--light); }
         .sr-legend {
             display: flex; gap: 14px; margin-bottom: 10px; padding-bottom: 8px;
-            border-bottom: 1px solid rgba(217,232,226,0.4);
+            border-bottom: 1px solid rgba(245,231,198,0.4);
         }
         .sr-legend span {
             font-size: 10px; color: var(--light); display: flex; align-items: center; gap: 4px;
@@ -240,7 +240,7 @@
         .sr-legend .dot-consumed { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); }
         .recent-entry {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 8px 0; border-bottom: 1px solid rgba(217,232,226,0.3);
+            padding: 8px 0; border-bottom: 1px solid rgba(245,231,198,0.3);
             font-size: 13px;
         }
         .recent-entry:last-child { border-bottom: none; }
@@ -255,7 +255,7 @@
         .recent-entry .re-del:active { transform: scale(0.9); background: rgba(217,79,79,0.2); }
         /* Confirm overlay */
         .confirm-overlay {
-            position: fixed; inset: 0; background: rgba(26,58,42,0.5);
+            position: fixed; inset: 0; background: rgba(34,34,34,0.5);
             display: flex; align-items: center; justify-content: center;
             z-index: 90; opacity: 0; pointer-events: none; transition: opacity 0.2s;
             padding: 20px;
@@ -263,7 +263,7 @@
         .confirm-overlay.show { opacity: 1; pointer-events: auto; }
         .confirm-card {
             background: #fff; border-radius: 24px; padding: 24px; width: 100%;
-            max-width: 360px; box-shadow: 0 20px 60px rgba(26,58,42,0.2);
+            max-width: 360px; box-shadow: 0 20px 60px rgba(34,34,34,0.2);
             transform: scale(0.9); transition: transform 0.2s;
         }
         .confirm-overlay.show .confirm-card { transform: scale(1); }
@@ -282,23 +282,23 @@
         .confirm-btns .btn-cancel { background: var(--mint); color: var(--mid); }
         .confirm-btns .btn-confirm {
             background: var(--primary); color: var(--dark);
-            box-shadow: 0 4px 12px rgba(255,200,1,0.35);
+            box-shadow: 0 4px 12px rgba(255,109,31,0.35);
         }
         .confirm-btns button:active { transform: scale(0.96); }
         .tip-box {
-            padding: 14px 16px; background: rgba(255,200,1,0.12); border-radius: var(--r);
-            margin-bottom: 16px; border: 1px solid rgba(255,200,1,0.25);
+            padding: 14px 16px; background: rgba(255,109,31,0.12); border-radius: var(--r);
+            margin-bottom: 16px; border: 1px solid rgba(255,109,31,0.25);
         }
         .tip-box p { font-size: 12px; color: var(--mid); line-height: 1.6; }
         .settle-btn {
             width: 100%; padding: 16px; background: var(--accent); color: #fff; border: none;
             border-radius: var(--r); font-size: 16px; font-weight: 700; cursor: pointer;
-            box-shadow: 0 4px 16px rgba(255,153,50,0.3); transition: all 0.15s;
+            box-shadow: 0 4px 16px rgba(255,109,31,0.3); transition: all 0.15s;
         }
         .settle-btn:active { transform: scale(0.98); }
         /* Success overlay */
         .overlay {
-            position: fixed; inset: 0; background: rgba(241,246,244,0.96);
+            position: fixed; inset: 0; background: rgba(250,243,225,0.96);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s;
         }
@@ -306,7 +306,7 @@
         .overlay .icon {
             width: 64px; height: 64px; border-radius: 50%; background: var(--primary);
             display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
-            box-shadow: 0 8px 24px rgba(255,200,1,0.35);
+            box-shadow: 0 8px 24px rgba(255,109,31,0.35);
         }
         .overlay .icon svg { width: 32px; height: 32px; color: var(--dark); }
         .overlay .msg { font-size: 18px; font-weight: 700; }
