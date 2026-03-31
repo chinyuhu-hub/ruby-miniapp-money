@@ -616,23 +616,46 @@
             }
         }
 
-        // ── 累積帳本邏輯 ──
-        const ledgerLog = [];
-        const ledgerBalance = {}; // { memberId: { paid:0, consumed:0 } }
+        // ── 累積帳本邏輯（localStorage 持久化）──
+        const STORAGE_KEY = 'ruby_ledger';
+        let ledgerLog = [];
+        let ledgerBalance = {};
+
+        // 從 localStorage 載入
+        function loadLedgerState() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const d = JSON.parse(saved);
+                    ledgerLog = d.log || [];
+                    ledgerBalance = d.balance || {};
+                }
+            } catch(e) { console.log('載入帳本失敗:', e); }
+        }
+
+        // 存入 localStorage
+        function saveLedgerState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    log: ledgerLog, balance: ledgerBalance
+                }));
+            } catch(e) { console.log('儲存帳本失敗:', e); }
+        }
+
+        // 頁面載入時恢復資料
+        loadLedgerState();
+        setTimeout(() => renderLedger(), 0);
 
         function addToLedger(record) {
-            // 累加墊款人的付出
             const payerId = record.payer.id;
             if (!ledgerBalance[payerId]) ledgerBalance[payerId] = { paid:0, consumed:0 };
             ledgerBalance[payerId].paid += record.total;
 
-            // 累加每人消費
             record.entries.forEach(e => {
                 if (!ledgerBalance[e.id]) ledgerBalance[e.id] = { paid:0, consumed:0 };
                 ledgerBalance[e.id].consumed += e.amount;
             });
 
-            // 加入紀錄
             const mealLabels = { lunch:'午餐', afternoon:'下午茶', dinner:'晚餐', other:'其他' };
             ledgerLog.unshift({
                 id: Date.now(),
@@ -645,6 +668,7 @@
                 entries: record.entries
             });
 
+            saveLedgerState();
             renderLedger();
             resetForm();
         }
@@ -661,6 +685,7 @@
                 if (ledgerBalance[e.id]) ledgerBalance[e.id].consumed -= e.amount;
             });
             ledgerLog.splice(idx, 1);
+            saveLedgerState();
             renderLedger();
         }
 
@@ -796,6 +821,8 @@
             // 歸零帳本
             ledgerLog.length = 0;
             Object.keys(ledgerBalance).forEach(k => delete ledgerBalance[k]);
+            saveLedgerState();
+            saveArchiveState();
             renderLedger();
             renderArchive();
 
@@ -822,10 +849,26 @@
             document.getElementById('floating-footer').style.display = tab==='record'?'flex':'none';
         }
 
-        // ── 歷史帳本邏輯 ──
+        // ── 歷史帳本邏輯（localStorage 持久化）──
+        const ARCHIVE_STORAGE_KEY = 'ruby_archive';
         let archiveFilter = 'all';
-        // 模擬歷史資料（實際由 bot 注入）
-        const archiveData = [];
+        let archiveData = [];
+
+        function loadArchiveState() {
+            try {
+                const saved = localStorage.getItem(ARCHIVE_STORAGE_KEY);
+                if (saved) archiveData = JSON.parse(saved);
+            } catch(e) { console.log('載入歷史失敗:', e); }
+        }
+
+        function saveArchiveState() {
+            try {
+                localStorage.setItem(ARCHIVE_STORAGE_KEY, JSON.stringify(archiveData));
+            } catch(e) { console.log('儲存歷史失敗:', e); }
+        }
+
+        loadArchiveState();
+        setTimeout(() => renderArchive(), 0);
 
         function setArchiveFilter(filter, el) {
             archiveFilter = filter;
