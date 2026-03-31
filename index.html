@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ruby 溪洲店 - 買飯小工具</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg: #F1F6F4; --primary: #FFC801; --accent: #FF9932;
+            --mint: #D9E8E2; --dark: #1a3a2a; --mid: #3d6b56;
+            --light: #6a9b84; --r: 16px; --rs: 12px;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background: var(--bg); color: var(--dark);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent; padding-bottom: 110px; min-height: 100vh;
+        }
+        .top-nav {
+            position: sticky; top: 0; z-index: 50;
+            background: rgba(241,246,244,0.92); backdrop-filter: blur(12px);
+            padding: 12px 16px; display: flex; justify-content: center; gap: 24px;
+            border-bottom: 1px solid rgba(217,232,226,0.6);
+        }
+        .nav-btn {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            background: none; border: none; cursor: pointer; color: #9bb;
+        }
+        .nav-btn .nav-icon {
+            width: 44px; height: 44px; border-radius: var(--rs); background: #fff;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 6px rgba(26,58,42,0.06); transition: all 0.2s;
+        }
+        .nav-btn .nav-icon svg { width: 20px; height: 20px; }
+        .nav-btn span { font-size: 11px; font-weight: 700; }
+        .nav-btn.active { color: var(--dark); }
+        .nav-btn.active .nav-icon {
+            background: var(--primary); color: var(--dark);
+            box-shadow: 0 4px 12px rgba(255,200,1,0.35);
+        }
+        .page { padding: 16px; }
+        .page.hidden { display: none; }
+        .section-title {
+            font-size: 13px; font-weight: 700; color: var(--mid);
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+        }
+        .section-title .dot { width: 4px; height: 16px; background: var(--accent); border-radius: 4px; }
+        .date-row {
+            display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+            padding: 10px 14px; background: #fff; border-radius: var(--rs);
+            box-shadow: 0 1px 4px rgba(26,58,42,0.05);
+        }
+        .date-row input[type="date"] {
+            flex: 1; border: none; background: transparent; font-size: 15px;
+            font-weight: 600; color: var(--dark); outline: none; font-family: inherit;
+        }
+        .meal-tags { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+        .meal-tag {
+            padding: 7px 14px; border-radius: 20px; border: 1.5px solid var(--mint);
+            background: #fff; font-size: 12px; font-weight: 600; color: var(--light);
+            cursor: pointer; transition: all 0.2s;
+        }
+        .meal-tag.active {
+            background: var(--primary); color: var(--dark); border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(255,200,1,0.3);
+        }
+        .payer-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 22px;
+        }
+        .payer-btn {
+            padding: 10px 2px; background: #fff; border: 1.5px solid var(--mint);
+            border-radius: var(--rs); font-size: 14px; font-weight: 700; color: var(--mid);
+            cursor: pointer; transition: all 0.2s; text-align: center;
+        }
+        .payer-btn:active { transform: scale(0.95); }
+        .payer-btn.selected {
+            background: var(--primary); color: var(--dark); border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(255,200,1,0.35); transform: scale(1.02);
+        }
+        .member-list { display: flex; flex-direction: column; gap: 8px; }
+        .member-card {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 14px; background: #fff; border: 2px solid transparent;
+            border-radius: var(--r); cursor: pointer; transition: all 0.2s;
+        }
+        .member-card:active { transform: scale(0.99); }
+        .member-card.active { border-color: var(--accent); box-shadow: 0 4px 14px rgba(255,153,50,0.12); }
+        .m-left { display: flex; align-items: center; gap: 10px; }
+        .m-check {
+            width: 22px; height: 22px; border: 2px solid var(--mint); border-radius: 7px;
+            background: #f8fbf9; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: all 0.2s;
+        }
+        .member-card.active .m-check { border-color: var(--accent); background: #fff6ec; }
+        .m-dot {
+            width: 8px; height: 8px; background: var(--accent); border-radius: 50%;
+            opacity: 0; transform: scale(0); transition: all 0.2s;
+        }
+        .member-card.active .m-dot { opacity: 1; transform: scale(1); }
+        .m-name { font-size: 15px; font-weight: 700; }
+        .m-tag { font-size: 10px; font-weight: 700; color: var(--accent); display: none; }
+        .member-card.is-payer .m-tag { display: block; }
+        .m-right {
+            display: flex; align-items: center; gap: 4px;
+            opacity: 0; transform: translateX(8px); transition: all 0.2s;
+        }
+        .member-card.active .m-right { opacity: 1; transform: translateX(0); }
+        .m-right span { font-size: 12px; color: var(--light); font-weight: 600; }
+        .amt-input {
+            width: 68px; padding: 7px 6px; border: 1.5px solid var(--mint); border-radius: 8px;
+            font-size: 16px; font-weight: 700; text-align: right; background: #f8fbf9;
+            color: var(--dark); outline: none; font-family: inherit;
+            -webkit-appearance: none; appearance: none; -moz-appearance: textfield;
+        }
+        .amt-input:focus { border-color: var(--primary); background: #fff; }
+        .amt-input::placeholder { color: #b0c4b8; font-weight: 400; }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
+        .total-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 18px; background: linear-gradient(135deg, var(--dark), #2d5a42);
+            border-radius: var(--r); margin-top: 12px; color: #fff;
+        }
+        .total-bar .label { font-size: 13px; opacity: 0.7; }
+        .total-bar .amount { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+        .footer {
+            position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 16px;
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+            border-top: 1px solid var(--mint);
+            box-shadow: 0 -4px 20px rgba(26,58,42,0.06);
+            display: flex; align-items: center; justify-content: space-between; z-index: 40;
+        }
+        .f-col { display: flex; flex-direction: column; gap: 2px; }
+        .f-label { font-size: 10px; color: var(--light); text-transform: uppercase; letter-spacing: 1px; }
+        .f-val { font-size: 14px; font-weight: 700; color: var(--dark); }
+        .f-right { display: flex; align-items: center; gap: 12px; }
+        .save-btn {
+            padding: 12px 24px; background: var(--primary); color: var(--dark); border: none;
+            border-radius: var(--r); font-size: 15px; font-weight: 700; cursor: pointer;
+            transition: all 0.15s; box-shadow: 0 4px 12px rgba(255,200,1,0.35);
+        }
+        .save-btn:active { transform: scale(0.96); }
+        .save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        /* Ledger & History shared */
+        .h-header { text-align: center; margin-bottom: 20px; }
+        .h-header h1 { font-size: 20px; font-weight: 800; }
+        .h-header p { font-size: 12px; color: var(--light); margin-top: 4px; }
+        .h-card {
+            background: #fff; border-radius: 24px; padding: 20px;
+            box-shadow: 0 2px 12px rgba(26,58,42,0.05); margin-bottom: 16px;
+        }
+        .h-card .empty { text-align: center; color: var(--light); padding: 20px; font-size: 14px; }
+        /* History tab */
+        .search-bar {
+            display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+            padding: 10px 14px; background: #fff; border-radius: var(--rs);
+            border: 1.5px solid var(--mint); transition: border-color 0.2s;
+        }
+        .search-bar:focus-within { border-color: var(--primary); }
+        .search-bar svg { width: 18px; height: 18px; color: var(--light); flex-shrink: 0; }
+        .search-bar input {
+            flex: 1; border: none; background: transparent; font-size: 14px;
+            color: var(--dark); outline: none; font-family: inherit;
+        }
+        .search-bar input::placeholder { color: #b0c4b8; }
+        .month-group { margin-bottom: 20px; }
+        .month-label {
+            font-size: 12px; font-weight: 700; color: var(--light);
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;
+            padding-left: 4px;
+        }
+        .history-record {
+            background: #fff; border-radius: var(--r); padding: 14px 16px;
+            margin-bottom: 8px; box-shadow: 0 1px 4px rgba(26,58,42,0.04);
+            border-left: 3px solid var(--primary); cursor: pointer; transition: all 0.2s;
+        }
+        .history-record:active { transform: scale(0.99); }
+        .history-record .hr-top {
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .history-record .hr-date { font-size: 14px; font-weight: 700; }
+        .history-record .hr-total { font-size: 14px; font-weight: 800; color: var(--accent); }
+        .history-record .hr-detail {
+            font-size: 12px; color: var(--light); margin-top: 6px; line-height: 1.5;
+        }
+        .history-record .hr-expand {
+            max-height: 0; overflow: hidden; transition: max-height 0.3s ease;
+        }
+        .history-record.open .hr-expand { max-height: 300px; }
+        .history-record .hr-arrow {
+            font-size: 12px; color: var(--light); transition: transform 0.2s;
+        }
+        .history-record.open .hr-arrow { transform: rotate(180deg); }
+        .filter-chips {
+            display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto;
+            -webkit-overflow-scrolling: touch; scrollbar-width: none;
+        }
+        .filter-chips::-webkit-scrollbar { display: none; }
+        .filter-chip {
+            padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--mint);
+            background: #fff; font-size: 11px; font-weight: 600; color: var(--mid);
+            cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;
+        }
+        .filter-chip.active {
+            background: var(--mint); border-color: var(--light);
+        }
+        /* Settlement table rows */
+        .settle-row {
+            display: flex; align-items: center; padding: 10px 0;
+            border-bottom: 1px solid rgba(217,232,226,0.4);
+        }
+        .settle-row:last-child { border-bottom: none; }
+        .settle-row .sr-name {
+            width: 52px; font-size: 14px; font-weight: 700; flex-shrink: 0;
+        }
+        .settle-row .sr-bars {
+            flex: 1; display: flex; flex-direction: column; gap: 3px; margin: 0 10px;
+        }
+        .settle-row .sr-bar {
+            height: 6px; border-radius: 3px; min-width: 2px; transition: width 0.4s ease;
+        }
+        .settle-row .sr-bar.paid { background: var(--primary); }
+        .settle-row .sr-bar.consumed { background: var(--mint); }
+        .settle-row .sr-net {
+            width: 70px; text-align: right; font-size: 14px; font-weight: 800; flex-shrink: 0;
+        }
+        .settle-row .sr-net.positive { color: #2d8a5e; }
+        .settle-row .sr-net.negative { color: #d94f4f; }
+        .settle-row .sr-net.zero { color: var(--light); }
+        .sr-legend {
+            display: flex; gap: 14px; margin-bottom: 10px; padding-bottom: 8px;
+            border-bottom: 1px solid rgba(217,232,226,0.4);
+        }
+        .sr-legend span {
+            font-size: 10px; color: var(--light); display: flex; align-items: center; gap: 4px;
+        }
+        .sr-legend .dot-paid { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+        .sr-legend .dot-consumed { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); }
+        .recent-entry {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 0; border-bottom: 1px solid rgba(217,232,226,0.3);
+            font-size: 13px;
+        }
+        .recent-entry:last-child { border-bottom: none; }
+        .recent-entry .re-left { color: var(--mid); }
+        .recent-entry .re-right { font-weight: 700; color: var(--accent); }
+        .tip-box {
+            padding: 14px 16px; background: rgba(255,200,1,0.12); border-radius: var(--r);
+            margin-bottom: 16px; border: 1px solid rgba(255,200,1,0.25);
+        }
+        .tip-box p { font-size: 12px; color: var(--mid); line-height: 1.6; }
+        .settle-btn {
+            width: 100%; padding: 16px; background: var(--accent); color: #fff; border: none;
+            border-radius: var(--r); font-size: 16px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 4px 16px rgba(255,153,50,0.3); transition: all 0.15s;
+        }
+        .settle-btn:active { transform: scale(0.98); }
+        /* Success overlay */
+        .overlay {
+            position: fixed; inset: 0; background: rgba(241,246,244,0.96);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .overlay.show { opacity: 1; pointer-events: auto; }
+        .overlay .icon {
+            width: 64px; height: 64px; border-radius: 50%; background: var(--primary);
+            display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
+            box-shadow: 0 8px 24px rgba(255,200,1,0.35);
+        }
+        .overlay .icon svg { width: 32px; height: 32px; color: var(--dark); }
+        .overlay .msg { font-size: 18px; font-weight: 700; }
+        .overlay .sub { font-size: 13px; color: var(--light); margin-top: 4px; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        .page:not(.hidden) { animation: fadeIn 0.3s ease; }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <button onclick="switchTab('record')" id="tab-record" class="nav-btn active">
+            <div class="nav-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></div>
+            <span>每日記帳</span>
+        </button>
+        <button onclick="switchTab('history')" id="tab-history" class="nav-btn">
+            <div class="nav-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01m-.01 4h.01"/></svg></div>
+            <span>累積帳本</span>
+        </button>
+        <button onclick="switchTab('archive')" id="tab-archive" class="nav-btn">
+            <div class="nav-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+            <span>歷史帳本</span>
+        </button>
+    </div>
+
+    <!-- 每日記帳 -->
+    <div id="page-record" class="page">
+        <div class="date-row">
+            <label>📅</label>
+            <input type="date" id="record-date">
+        </div>
+        <div class="meal-tags" id="meal-tags">
+            <button class="meal-tag active" data-meal="lunch">🍱 午餐</button>
+            <button class="meal-tag" data-meal="afternoon">☕ 下午茶</button>
+            <button class="meal-tag" data-meal="dinner">🌙 晚餐</button>
+            <button class="meal-tag" data-meal="other">📦 其他</button>
+        </div>
+        <div style="margin-bottom:22px">
+            <h2 class="section-title"><span class="dot"></span>誰墊錢？</h2>
+            <div class="payer-grid" id="payer-container"></div>
+        </div>
+        <div>
+            <h2 class="section-title"><span class="dot"></span>誰有吃？金額多少？</h2>
+            <div class="member-list" id="member-container"></div>
+            <div class="total-bar">
+                <span class="label">本次合計</span>
+                <span class="amount" id="total-display">$0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 累積帳本 -->
+    <div id="page-history" class="page hidden">
+        <div class="h-header">
+            <h1>📊 累積結算概況</h1>
+            <p id="current-period">開帳至今</p>
+        </div>
+
+        <!-- 總覽統計 -->
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:16px;">
+            <div class="h-card" style="text-align:center; padding:14px 8px;">
+                <div style="font-size:11px; color:var(--light);">總筆數</div>
+                <div style="font-size:22px; font-weight:800; color:var(--dark);" id="stat-count">0</div>
+            </div>
+            <div class="h-card" style="text-align:center; padding:14px 8px;">
+                <div style="font-size:11px; color:var(--light);">總金額</div>
+                <div style="font-size:22px; font-weight:800; color:var(--accent);" id="stat-total">$0</div>
+            </div>
+            <div class="h-card" style="text-align:center; padding:14px 8px;">
+                <div style="font-size:11px; color:var(--light);">參與人</div>
+                <div style="font-size:22px; font-weight:800; color:var(--mid);" id="stat-people">0</div>
+            </div>
+        </div>
+
+        <!-- 每人結算表 -->
+        <div class="h-card" style="padding:16px;">
+            <div style="font-size:13px; font-weight:700; color:var(--mid); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                <span style="width:4px; height:16px; background:var(--accent); border-radius:4px; display:inline-block;"></span>
+                每人淨額
+            </div>
+            <div id="settlement-table">
+                <p class="empty">尚無記錄<br><span style="font-size:12px">記帳後這裡會自動更新</span></p>
+            </div>
+        </div>
+
+        <!-- 最近紀錄 -->
+        <div class="h-card" style="padding:16px;">
+            <div style="font-size:13px; font-weight:700; color:var(--mid); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                <span style="width:4px; height:16px; background:var(--primary); border-radius:4px; display:inline-block;"></span>
+                最近記帳
+            </div>
+            <div id="recent-log">
+                <p class="empty" style="padding:10px;">記帳後這裡會顯示明細</p>
+            </div>
+        </div>
+
+        <div class="tip-box">
+            <p>💡 <b>小提示：</b>累積每次記帳的總額。按下方按鈕結算，Ruby 會算出最省事的還錢方案發到群組。結算後帳本歸零，歷史紀錄保留兩個月可查。</p>
+        </div>
+        <button onclick="handleSettle()" class="settle-btn">執行結算 →</button>
+    </div>
+
+    <!-- 歷史帳本 -->
+    <div id="page-archive" class="page hidden">
+        <div class="h-header">
+            <h1>📂 歷史帳本</h1>
+            <p>保留最近兩個月的結算紀錄</p>
+        </div>
+        <div class="search-bar">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" id="archive-search" placeholder="搜尋姓名、日期..." oninput="filterArchive()">
+        </div>
+        <div class="filter-chips" id="archive-filters">
+            <button class="filter-chip active" data-filter="all" onclick="setArchiveFilter('all',this)">全部</button>
+            <button class="filter-chip" data-filter="lunch" onclick="setArchiveFilter('lunch',this)">🍱 午餐</button>
+            <button class="filter-chip" data-filter="afternoon" onclick="setArchiveFilter('afternoon',this)">☕ 下午茶</button>
+            <button class="filter-chip" data-filter="dinner" onclick="setArchiveFilter('dinner',this)">🌙 晚餐</button>
+            <button class="filter-chip" data-filter="settle" onclick="setArchiveFilter('settle',this)">💰 結算</button>
+        </div>
+        <div id="archive-list">
+            <div class="h-card">
+                <p class="empty">尚無歷史紀錄<br><span style="font-size:12px">結算後的紀錄會出現在這裡</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部 -->
+    <div id="floating-footer" class="footer">
+        <div class="f-col">
+            <span class="f-label">墊款人</span>
+            <span class="f-val" id="footer-payer">未選擇</span>
+        </div>
+        <div class="f-right">
+            <div class="f-col" style="text-align:right">
+                <span class="f-label">人數</span>
+                <span class="f-val" id="footer-count">0 人</span>
+            </div>
+            <button class="save-btn" id="save-btn" disabled>存入帳本</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="success-overlay">
+        <div class="icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+        <p class="msg">已送出！</p>
+        <p class="sub">Ruby 會發到群組確認 ✨</p>
+    </div>
+
+    <script>
+        const MEMBERS = [
+            { id:'zhiyu',   name:'志宇', full:'胡志宇' },
+            { id:'xinyi',   name:'欣儀', full:'高欣儀' },
+            { id:'yongjun', name:'泳畯', full:'羅泳畯' },
+            { id:'huishan', name:'慧珊', full:'黃慧珊' },
+            { id:'zhaoxiang',name:'照翔', full:'黃照翔' },
+            { id:'yaozhen', name:'曜禎', full:'陳曜禎' },
+            { id:'qingrui', name:'清睿', full:'林清睿' },
+            { id:'shengfeng',name:'聖浲', full:'徐聖浲' },
+            { id:'yuanbao', name:'元寶', full:'范元寶' },
+            { id:'qiusheng',name:'秋生', full:'黃秋生' },
+            { id:'wenwen',  name:'文彣', full:'詹文彣' },
+        ];
+
+        let payerId = null, meal = 'lunch', checked = new Set();
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+
+        // 日期預設今天
+        document.getElementById('record-date').value = new Date().toISOString().split('T')[0];
+
+        // 餐次
+        document.querySelectorAll('.meal-tag').forEach(t => {
+            t.addEventListener('click', () => {
+                document.querySelectorAll('.meal-tag').forEach(x => x.classList.remove('active'));
+                t.classList.add('active'); meal = t.dataset.meal;
+            });
+        });
+
+        // 生成 UI
+        const payerC = document.getElementById('payer-container');
+        const memberC = document.getElementById('member-container');
+
+        MEMBERS.forEach(m => {
+            // 墊款人按鈕
+            const pb = document.createElement('button');
+            pb.className = 'payer-btn'; pb.id = `p-${m.id}`; pb.innerText = m.name;
+            pb.addEventListener('click', () => selectPayer(m.id));
+            payerC.appendChild(pb);
+
+            // 成員卡
+            const card = document.createElement('div');
+            card.className = 'member-card'; card.id = `c-${m.id}`;
+            card.innerHTML = `
+                <div class="m-left">
+                    <div class="m-check"><div class="m-dot"></div></div>
+                    <div><span class="m-name">${m.name}</span><div class="m-tag">★ 墊款人</div></div>
+                </div>
+                <div class="m-right">
+                    <span>$</span>
+                    <input type="number" class="amt-input" id="i-${m.id}" placeholder="金額" inputmode="numeric">
+                </div>`;
+            card.addEventListener('click', e => { if (!e.target.classList.contains('amt-input')) toggleMember(m.id); });
+            card.querySelector('.amt-input').addEventListener('input', updateTotal);
+            memberC.appendChild(card);
+        });
+
+        function selectPayer(id) {
+            MEMBERS.forEach(m => {
+                document.getElementById(`p-${m.id}`).classList.remove('selected');
+                document.getElementById(`c-${m.id}`).classList.remove('is-payer');
+            });
+            document.getElementById(`p-${id}`).classList.add('selected');
+            document.getElementById(`c-${id}`).classList.add('is-payer');
+            payerId = id;
+            document.getElementById('footer-payer').innerText = MEMBERS.find(m=>m.id===id).name;
+            if (!checked.has(id)) toggleMember(id);
+            updateSave();
+        }
+
+        function toggleMember(id) {
+            const card = document.getElementById(`c-${id}`);
+            const input = document.getElementById(`i-${id}`);
+            if (checked.has(id)) { checked.delete(id); card.classList.remove('active'); input.value=''; }
+            else { checked.add(id); card.classList.add('active'); setTimeout(()=>input.focus(),100); }
+            document.getElementById('footer-count').innerText = `${checked.size} 人`;
+            updateTotal(); updateSave();
+        }
+
+        function updateTotal() {
+            let t=0; checked.forEach(id => { t += parseInt(document.getElementById(`i-${id}`).value)||0; });
+            document.getElementById('total-display').innerText = `$${t.toLocaleString()}`;
+        }
+
+        function updateSave() {
+            document.getElementById('save-btn').disabled = !payerId || checked.size===0;
+        }
+
+        // 存入
+        document.getElementById('save-btn').addEventListener('click', () => {
+            if (!payerId || checked.size===0) return;
+            const payer = MEMBERS.find(m=>m.id===payerId);
+            const entries = []; let total=0;
+            checked.forEach(id => {
+                const m = MEMBERS.find(x=>x.id===id);
+                const amt = parseInt(document.getElementById(`i-${id}`).value)||0;
+                total += amt;
+                entries.push({ id:m.id, name:m.name, fullName:m.full, amount:amt });
+            });
+            if (total===0) { showAlert('請至少填一個金額！'); return; }
+
+            const data = {
+                action:'DAILY_RECORD', date:document.getElementById('record-date').value,
+                meal, payer:{ id:payer.id, name:payer.name, fullName:payer.full },
+                entries, total, timestamp:new Date().toISOString()
+            };
+
+            if (tg) { tg.sendData(JSON.stringify(data)); }
+            else {
+                console.log('📤',JSON.stringify(data,null,2));
+                addToLedger(data);
+                showSuccess();
+            }
+        });
+
+        // ── 累積帳本邏輯 ──
+        const ledgerLog = [];
+        const ledgerBalance = {}; // { memberId: { paid:0, consumed:0 } }
+
+        function addToLedger(record) {
+            // 累加墊款人的付出
+            const payerId = record.payer.id;
+            if (!ledgerBalance[payerId]) ledgerBalance[payerId] = { paid:0, consumed:0 };
+            ledgerBalance[payerId].paid += record.total;
+
+            // 累加每人消費
+            record.entries.forEach(e => {
+                if (!ledgerBalance[e.id]) ledgerBalance[e.id] = { paid:0, consumed:0 };
+                ledgerBalance[e.id].consumed += e.amount;
+            });
+
+            // 加入紀錄
+            const mealLabels = { lunch:'午餐', afternoon:'下午茶', dinner:'晚餐', other:'其他' };
+            ledgerLog.unshift({
+                date: record.date,
+                meal: mealLabels[record.meal] || record.meal,
+                payer: record.payer.name,
+                total: record.total,
+                count: record.entries.length
+            });
+
+            renderLedger();
+        }
+
+        function renderLedger() {
+            // 統計
+            const totalAmt = ledgerLog.reduce((s,r) => s + r.total, 0);
+            const involvedIds = new Set(Object.keys(ledgerBalance).filter(id => {
+                const b = ledgerBalance[id];
+                return b.paid > 0 || b.consumed > 0;
+            }));
+            document.getElementById('stat-count').textContent = ledgerLog.length;
+            document.getElementById('stat-total').textContent = `$${totalAmt.toLocaleString()}`;
+            document.getElementById('stat-people').textContent = involvedIds.size;
+
+            // 結算表
+            const table = document.getElementById('settlement-table');
+            if (involvedIds.size === 0) {
+                table.innerHTML = '<p class="empty">尚無記錄<br><span style="font-size:12px">記帳後這裡會自動更新</span></p>';
+            } else {
+                const maxVal = Math.max(...Object.values(ledgerBalance).map(b => Math.max(b.paid, b.consumed)), 1);
+                let html = '<div class="sr-legend"><span><span class="dot-paid"></span>已墊</span><span><span class="dot-consumed"></span>已吃</span></div>';
+                MEMBERS.forEach(m => {
+                    const b = ledgerBalance[m.id];
+                    if (!b || (b.paid === 0 && b.consumed === 0)) return;
+                    const net = b.paid - b.consumed;
+                    const paidW = Math.round((b.paid / maxVal) * 100);
+                    const consumedW = Math.round((b.consumed / maxVal) * 100);
+                    const cls = net > 0 ? 'positive' : net < 0 ? 'negative' : 'zero';
+                    const sign = net > 0 ? '+' : '';
+                    html += `<div class="settle-row">
+                        <span class="sr-name">${m.name}</span>
+                        <div class="sr-bars">
+                            <div class="sr-bar paid" style="width:${paidW}%" title="已墊 $${b.paid.toLocaleString()}"></div>
+                            <div class="sr-bar consumed" style="width:${consumedW}%" title="已吃 $${b.consumed.toLocaleString()}"></div>
+                        </div>
+                        <span class="sr-net ${cls}">${sign}$${Math.abs(net).toLocaleString()}</span>
+                    </div>`;
+                });
+                table.innerHTML = html;
+            }
+
+            // 最近紀錄
+            const logC = document.getElementById('recent-log');
+            if (ledgerLog.length === 0) {
+                logC.innerHTML = '<p class="empty" style="padding:10px;">記帳後這裡會顯示明細</p>';
+            } else {
+                const show = ledgerLog.slice(0, 5);
+                logC.innerHTML = show.map(r =>
+                    `<div class="recent-entry">
+                        <span class="re-left">${r.date} ${r.meal}・${r.payer} 墊・${r.count}人</span>
+                        <span class="re-right">$${r.total.toLocaleString()}</span>
+                    </div>`
+                ).join('') + (ledgerLog.length > 5 ? `<div style="text-align:center;padding:6px;font-size:11px;color:var(--light);">...共 ${ledgerLog.length} 筆</div>` : '');
+            }
+        }
+
+        function handleSettle() {
+            // 第一步：預覽提示
+            const step1 = confirm(
+                '⚠️ 結算前確認\n\n'
+                + '結算後：\n'
+                + '• Ruby 會計算每人淨額\n'
+                + '• 算出最省事的還錢方案\n'
+                + '• 發送到群組讓大家確認\n'
+                + '• 帳本歸零重新開始\n'
+                + '• 歷史紀錄保留兩個月\n\n'
+                + '確定要繼續嗎？'
+            );
+            if (!step1) return;
+
+            // 第二步：再次確認
+            const step2 = confirm('再確認一次：真的要結算了嗎？結算後無法復原。');
+            if (!step2) return;
+
+            const data = {
+                action: 'SETTLE',
+                timestamp: new Date().toISOString(),
+                retainMonths: 2  // 告知 bot 保留兩個月歷史
+            };
+
+            if (tg) { tg.sendData(JSON.stringify(data)); }
+            else { console.log('📤 結算', data); showSuccess(); }
+        }
+
+        function switchTab(tab) {
+            ['record','history','archive'].forEach(t => {
+                document.getElementById(`page-${t}`).classList.toggle('hidden', tab!==t);
+                document.getElementById(`tab-${t}`).classList.toggle('active', tab===t);
+            });
+            document.getElementById('floating-footer').style.display = tab==='record'?'flex':'none';
+        }
+
+        // ── 歷史帳本邏輯 ──
+        let archiveFilter = 'all';
+        // 模擬歷史資料（實際由 bot 注入）
+        const archiveData = [];
+
+        function setArchiveFilter(filter, el) {
+            archiveFilter = filter;
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            renderArchive();
+        }
+
+        function filterArchive() {
+            renderArchive();
+        }
+
+        function renderArchive() {
+            const search = (document.getElementById('archive-search').value || '').toLowerCase();
+            const container = document.getElementById('archive-list');
+
+            let filtered = archiveData.filter(r => {
+                if (archiveFilter !== 'all' && r.type !== archiveFilter) return false;
+                if (search) {
+                    const haystack = `${r.date} ${r.summary} ${(r.names||[]).join(' ')}`.toLowerCase();
+                    if (!haystack.includes(search)) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="h-card"><p class="empty">${search||archiveFilter!=='all'?'找不到符合的紀錄':'尚無歷史紀錄<br><span style="font-size:12px">結算後的紀錄會出現在這裡</span>'}</p></div>`;
+                return;
+            }
+
+            // 按月分組
+            const groups = {};
+            filtered.forEach(r => {
+                const month = r.date.substring(0,7);
+                if (!groups[month]) groups[month] = [];
+                groups[month].push(r);
+            });
+
+            let html = '';
+            Object.keys(groups).sort().reverse().forEach(month => {
+                const mLabel = month.replace('-','年') + '月';
+                html += `<div class="month-group"><div class="month-label">${mLabel}</div>`;
+                groups[month].forEach((r,i) => {
+                    const icon = r.type==='settle'?'💰':r.type==='lunch'?'🍱':r.type==='afternoon'?'☕':r.type==='dinner'?'🌙':'📦';
+                    html += `<div class="history-record" onclick="this.classList.toggle('open')">
+                        <div class="hr-top">
+                            <span class="hr-date">${icon} ${r.date}</span>
+                            <span style="display:flex;align-items:center;gap:6px">
+                                <span class="hr-total">$${r.total.toLocaleString()}</span>
+                                <span class="hr-arrow">▼</span>
+                            </span>
+                        </div>
+                        <div class="hr-expand"><div class="hr-detail">${r.detail||r.summary}</div></div>
+                    </div>`;
+                });
+                html += `</div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function showAlert(msg) { if(tg) tg.showAlert(msg); else alert(msg); }
+        function showSuccess() {
+            const o = document.getElementById('success-overlay');
+            o.classList.add('show');
+            setTimeout(()=>{ o.classList.remove('show'); if(tg) tg.close(); }, 1500);
+        }
+    </script>
+</body>
+</html>
