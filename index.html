@@ -338,6 +338,7 @@
             <input type="date" id="record-date">
         </div>
         <div class="meal-tags" id="meal-tags">
+            <button class="meal-tag" data-meal="breakfast">🌅 早餐</button>
             <button class="meal-tag active" data-meal="lunch">🍱 午餐</button>
             <button class="meal-tag" data-meal="afternoon">☕ 下午茶</button>
             <button class="meal-tag" data-meal="dinner">🌙 晚餐</button>
@@ -420,6 +421,7 @@
         </div>
         <div class="filter-chips" id="archive-filters">
             <button class="filter-chip active" data-filter="all" onclick="setArchiveFilter('all',this)">全部</button>
+            <button class="filter-chip" data-filter="breakfast" onclick="setArchiveFilter('breakfast',this)">🌅 早餐</button>
             <button class="filter-chip" data-filter="lunch" onclick="setArchiveFilter('lunch',this)">🍱 午餐</button>
             <button class="filter-chip" data-filter="afternoon" onclick="setArchiveFilter('afternoon',this)">☕ 下午茶</button>
             <button class="filter-chip" data-filter="dinner" onclick="setArchiveFilter('dinner',this)">🌙 晚餐</button>
@@ -569,7 +571,7 @@
             });
             if (total===0) { showAlert('請至少填一個金額！'); return; }
 
-            const mealLabels = { lunch:'午餐', afternoon:'下午茶', dinner:'晚餐', other:'其他' };
+            const mealLabels = { breakfast:'早餐', lunch:'午餐', afternoon:'下午茶', dinner:'晚餐', other:'其他' };
             pendingData = {
                 action:'DAILY_RECORD', date:document.getElementById('record-date').value,
                 meal, payer:{ id:payer.id, name:payer.name, fullName:payer.full },
@@ -656,7 +658,7 @@
                 ledgerBalance[e.id].consumed += e.amount;
             });
 
-            const mealLabels = { lunch:'午餐', afternoon:'下午茶', dinner:'晚餐', other:'其他' };
+            const mealLabels = { breakfast:'早餐', lunch:'午餐', afternoon:'下午茶', dinner:'晚餐', other:'其他' };
             ledgerLog.unshift({
                 id: Date.now(),
                 date: record.date,
@@ -800,7 +802,7 @@
             ledgerLog.forEach(r => {
                 archiveData.unshift({
                     date: r.date,
-                    type: r.meal === '午餐' ? 'lunch' : r.meal === '下午茶' ? 'afternoon' : r.meal === '晚餐' ? 'dinner' : 'other',
+                    type: r.meal === '早餐' ? 'breakfast' : r.meal === '午餐' ? 'lunch' : r.meal === '下午茶' ? 'afternoon' : r.meal === '晚餐' ? 'dinner' : 'other',
                     summary: `${r.payer} 墊・${r.count}人`,
                     total: r.total,
                     names: r.entries ? r.entries.map(e => e.name) : [],
